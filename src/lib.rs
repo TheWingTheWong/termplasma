@@ -6,7 +6,6 @@
 //! real terminal through crossterm, or runs it headless for benchmarks.
 
 pub mod app;
-pub mod ascii;
 pub mod cli;
 pub mod color;
 pub mod demo;
@@ -17,5 +16,6 @@ pub mod headless;
 pub mod hud;
 pub mod lut;
 pub mod palette;
+pub mod preview;
 pub mod render;
 pub mod rng;

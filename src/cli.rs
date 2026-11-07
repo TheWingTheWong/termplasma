@@ -28,6 +28,7 @@ HEADLESS:
         --frames <N>         frames to render headless [default: 600]
         --size <COLSxROWS>   headless terminal size in cells [default: 120x40]
         --ascii              after a headless run, print the last frame as ASCII
+        --ppm <FILE>         after a headless run, save the last frame as a PPM image
         --bench              time every effect headless and print a table
 
     -l, --list               list effects and palettes
@@ -57,6 +58,7 @@ pub struct Options {
     pub frames: u64,
     pub size: (usize, usize),
     pub ascii: bool,
+    pub ppm: Option<String>,
     pub bench: bool,
     pub list: bool,
     pub help: bool,
@@ -78,6 +80,7 @@ impl Default for Options {
             frames: 600,
             size: (120, 40),
             ascii: false,
+            ppm: None,
             bench: false,
             list: false,
             help: false,
@@ -123,6 +126,7 @@ where
             "--no-sync" => o.sync = false,
             "--headless" => o.headless = true,
             "--ascii" => o.ascii = true,
+            "--ppm" => o.ppm = Some(value(&flag)?),
             "--bench" => o.bench = true,
             "-l" | "--list" => o.list = true,
             "-h" | "--help" => o.help = true,
@@ -130,8 +134,8 @@ where
             other => return Err(format!("unknown argument '{other}' (try --help)")),
         }
     }
-    if o.ascii && !o.headless {
-        return Err("--ascii only applies to --headless runs".into());
+    if (o.ascii || o.ppm.is_some()) && !o.headless {
+        return Err("--ascii and --ppm only apply to --headless runs".into());
     }
     if !(o.scene_secs.is_finite() && o.scene_secs >= 1.0) {
         return Err("--scene must be at least 1 second".into());
@@ -194,8 +198,10 @@ mod tests {
 
     #[test]
     fn headless_flags() {
-        let o = parse(["--headless", "--frames", "120", "--ascii", "--tolerance", "3"]).unwrap();
+        let o = parse(["--headless", "--frames", "120", "--ascii", "--tolerance", "3", "--ppm", "a.ppm"])
+            .unwrap();
         assert!(o.headless && o.ascii);
+        assert_eq!(o.ppm.as_deref(), Some("a.ppm"));
         assert_eq!(o.frames, 120);
         assert_eq!(o.tolerance, 3);
     }

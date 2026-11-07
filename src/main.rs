@@ -5,7 +5,7 @@ use termplasma::app::{self, Settings};
 use termplasma::cli::{self, ColorChoice, Options};
 use termplasma::demo::Demo;
 use termplasma::render::{ColorMode, Renderer};
-use termplasma::{ascii, effects, headless, hud, palette};
+use termplasma::{effects, headless, hud, palette, preview};
 
 fn main() -> ExitCode {
     let opts = match cli::parse(std::env::args().skip(1)) {
@@ -61,8 +61,7 @@ fn run(opts: Options) -> Result<(), String> {
     };
 
     if opts.headless {
-        headless_run(&opts, &mut demo, color_mode);
-        return Ok(());
+        return headless_run(&opts, &mut demo, color_mode);
     }
     if !io::stdout().is_terminal() {
         return Err("stdout is not a terminal; use --headless to render without one".into());
@@ -86,7 +85,7 @@ fn headless_dt(opts: &Options) -> f32 {
     1.0 / if opts.fps > 0 { opts.fps as f32 } else { 60.0 }
 }
 
-fn headless_run(opts: &Options, demo: &mut Demo, color_mode: ColorMode) {
+fn headless_run(opts: &Options, demo: &mut Demo, color_mode: ColorMode) -> Result<(), String> {
     let (cols, rows) = opts.size;
     let mut renderer = Renderer::new(cols, rows);
     renderer.set_color_mode(color_mode);
@@ -95,7 +94,10 @@ fn headless_run(opts: &Options, demo: &mut Demo, color_mode: ColorMode) {
     let (report, fb) = headless::run(demo, &mut renderer, opts.frames, headless_dt(opts));
 
     if opts.ascii {
-        print!("{}", ascii::to_ascii(&fb));
+        print!("{}", preview::to_ascii(&fb));
+    }
+    if let Some(path) = &opts.ppm {
+        std::fs::write(path, preview::to_ppm(&fb, 4)).map_err(|e| format!("writing {path}: {e}"))?;
     }
     let r = &report;
     println!(
@@ -120,6 +122,7 @@ fn headless_run(opts: &Options, demo: &mut Demo, color_mode: ColorMode) {
         hud::format_bytes(r.bytes_per_frame() as f32),
         r.change_ratio() * 100.0
     );
+    Ok(())
 }
 
 fn bench(opts: &Options) {
