@@ -13,3 +13,4 @@ pub mod rng;
 pub mod render;
 pub mod effects;
 pub mod ascii;
+pub mod font;
