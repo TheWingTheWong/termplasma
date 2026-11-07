@@ -10,3 +10,4 @@ pub mod palette;
 pub mod lut;
 pub mod framebuffer;
 pub mod rng;
+pub mod render;
