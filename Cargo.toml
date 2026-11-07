@@ -1,0 +1,20 @@
+[package]
+name = "termplasma"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Classic demoscene effects rendered live in the terminal with truecolor half-blocks"
+license = "MIT"
+authors = ["Ansorjon Juraev"]
+readme = "README.md"
+keywords = ["demoscene", "terminal", "plasma", "graphics", "ansi"]
+categories = ["command-line-utilities", "graphics"]
+
+[dependencies]
+crossterm = "0.28"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
