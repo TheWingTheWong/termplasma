@@ -128,7 +128,12 @@ fn headless_run(opts: &Options, demo: &mut Demo, color_mode: ColorMode) -> Resul
 fn bench(opts: &Options) {
     let (cols, rows) = opts.size;
     let frames = opts.frames;
-    println!("{frames} frames per effect at {cols}x{rows} cells ({cols}x{} px), truecolor", rows * 2);
+    // Benchmarks should not depend on the environment: auto means truecolor.
+    let mode = match opts.colors {
+        ColorChoice::Fixed(m) => m,
+        ColorChoice::Auto => ColorMode::TrueColor,
+    };
+    println!("{frames} frames per effect at {cols}x{rows} cells ({cols}x{} px), {mode:?}", rows * 2);
     println!();
     println!(
         "{:<10} {:>10} {:>10} {:>9} {:>11} {:>9}",
@@ -141,6 +146,7 @@ fn bench(opts: &Options) {
         demo.set_autoplay(false);
         let mut renderer = Renderer::new(cols, rows);
         renderer.set_tolerance(opts.tolerance);
+        renderer.set_color_mode(mode);
         let (r, _) = headless::run(&mut demo, &mut renderer, frames, headless_dt(opts));
         println!(
             "{:<10} {:>10.3} {:>10.3} {:>9.0} {:>11} {:>8.1}%",
