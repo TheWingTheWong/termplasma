@@ -12,6 +12,7 @@ pub mod fire;
 pub mod metaballs;
 pub mod plasma;
 pub mod rotozoom;
+pub mod scroller;
 pub mod starfield;
 pub mod tunnel;
 
@@ -39,6 +40,7 @@ pub trait Effect {
 pub fn all() -> Vec<Box<dyn Effect>> {
     vec![
         Box::new(starfield::Starfield::default()),
+        Box::new(scroller::Scroller::default()),
         Box::new(plasma::Plasma::default()),
         Box::new(tunnel::Tunnel::default()),
         Box::new(rotozoom::Rotozoom::default()),
