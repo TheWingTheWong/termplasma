@@ -8,6 +8,7 @@
 use crate::framebuffer::FrameBuffer;
 use crate::palette::Palette;
 
+pub mod fire;
 pub mod plasma;
 
 /// Timing for one frame.
@@ -32,5 +33,5 @@ pub trait Effect {
 
 /// One instance of every effect, in demo order.
 pub fn all() -> Vec<Box<dyn Effect>> {
-    vec![Box::new(plasma::Plasma::default())]
+    vec![Box::new(plasma::Plasma::default()), Box::new(fire::Fire::default())]
 }
