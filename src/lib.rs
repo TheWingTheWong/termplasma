@@ -4,3 +4,6 @@
 //! lookup tables, the frame buffer and the diffing ANSI encoder) and a set of
 //! effects that draw into that frame buffer. The binary wires the core to a
 //! real terminal through crossterm, or runs it headless for benchmarks.
+
+pub mod color;
+pub mod palette;
