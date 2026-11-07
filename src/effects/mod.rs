@@ -19,7 +19,8 @@ pub mod tunnel;
 /// Timing for one frame.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Frame {
-    /// Seconds of demo time (scaled by playback speed, frozen while paused).
+    /// Seconds this effect has been on screen (scaled by playback speed,
+    /// frozen while paused). Restarts at zero each time it is shown.
     pub time: f32,
     /// Demo-time seconds since the previous frame; 0 while paused.
     pub dt: f32,
@@ -39,8 +40,8 @@ pub trait Effect {
 /// One instance of every effect, in demo order.
 pub fn all() -> Vec<Box<dyn Effect>> {
     vec![
-        Box::new(starfield::Starfield::default()),
         Box::new(scroller::Scroller::default()),
+        Box::new(starfield::Starfield::default()),
         Box::new(plasma::Plasma::default()),
         Box::new(tunnel::Tunnel::default()),
         Box::new(rotozoom::Rotozoom::default()),

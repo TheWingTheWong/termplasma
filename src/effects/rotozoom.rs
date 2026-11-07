@@ -67,7 +67,7 @@ impl Effect for Rotozoom {
         let angle = to_angle(t * 0.45 + 0.6 * fsin(t * 0.21));
         // Texels per screen pixel: about four tiles across the short side at
         // zoom 1, breathing between close-up and far away.
-        let zoom = 1.25 + 0.95 * fsin(t * 0.37);
+        let zoom = 1.0 + 0.6 * fsin(t * 0.37);
         let scale = (zoom * (4.0 * TILE as f32) / w.min(h) as f32 * 65536.0) as i64;
         let du = ((icos(angle) as i64 * scale) >> 16) as i32;
         let dv = ((isin(angle) as i64 * scale) >> 16) as i32;

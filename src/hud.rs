@@ -158,7 +158,7 @@ mod tests {
         let mut d = Demo::standard();
         let m = Meter::default();
         let s = status_text(&d, &m);
-        assert!(s.starts_with(" 1/7 starfield  copper  "), "{s}");
+        assert!(s.starts_with(" 1/7 scroller  copper  "), "{s}");
         assert!(s.contains("autoplay"));
         d.toggle_pause();
         d.next_palette();

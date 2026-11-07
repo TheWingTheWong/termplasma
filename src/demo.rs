@@ -37,6 +37,9 @@ pub struct Demo {
     speed_index: usize,
     scene_secs: f32,
     time: f32,
+    /// Per-effect clocks: an effect's time starts at zero each time it is
+    /// brought on screen, so the scroller always opens on its first word.
+    clocks: Vec<f32>,
     scene_time: f32,
     dt: f32,
     scratch: FrameBuffer,
@@ -46,6 +49,7 @@ impl Demo {
     pub fn new(effects: Vec<Box<dyn Effect>>, palettes: Vec<Palette>) -> Demo {
         assert!(!effects.is_empty(), "a demo needs at least one effect");
         assert!(!palettes.is_empty(), "a demo needs at least one palette");
+        let clocks = vec![0.0; effects.len()];
         let preferred = effects.iter().map(|e| palette::find(&palettes, e.palette()).unwrap_or(0)).collect();
         Demo {
             effects,
@@ -59,6 +63,7 @@ impl Demo {
             speed_index: 3,
             scene_secs: DEFAULT_SCENE_SECS,
             time: 0.0,
+            clocks,
             scene_time: 0.0,
             dt: 0.0,
             scratch: FrameBuffer::default(),
@@ -84,6 +89,10 @@ impl Demo {
         let dt = if self.paused { 0.0 } else { real_dt.clamp(0.0, 0.25) * self.speed() };
         self.dt = dt;
         self.time += dt;
+        self.clocks[self.current] += dt;
+        if let Some(tr) = self.transition {
+            self.clocks[tr.to] += dt;
+        }
 
         if let Some(mut tr) = self.transition {
             tr.progress += dt / tr.length;
@@ -104,13 +113,14 @@ impl Demo {
 
     /// Draws the current frame (two effects blended during a transition).
     pub fn render(&mut self, fb: &mut FrameBuffer) {
-        let frame = Frame { time: self.time, dt: self.dt };
+        let frame = Frame { time: self.clocks[self.current], dt: self.dt };
         let pal = self.palette_for(self.current);
         self.effects[self.current].render(fb, frame, &self.palettes[pal]);
 
         if let Some(tr) = self.transition {
             self.scratch.resize(fb.width(), fb.height());
             let pal = self.palette_for(tr.to);
+            let frame = Frame { time: self.clocks[tr.to], dt: self.dt };
             self.effects[tr.to].render(&mut self.scratch, frame, &self.palettes[pal]);
             fb.blend_toward(&self.scratch, (smoothstep(tr.progress) * 256.0) as u16);
         }
@@ -123,6 +133,7 @@ impl Demo {
         }
         self.scene_time = 0.0;
         if to != self.current {
+            self.clocks[to] = 0.0;
             self.transition = Some(Transition { to, progress: 0.0, length });
         }
     }
@@ -142,6 +153,7 @@ impl Demo {
         match self.effects.iter().position(|e| e.name().eq_ignore_ascii_case(name)) {
             Some(i) => {
                 self.current = i;
+                self.clocks[i] = 0.0;
                 self.transition = None;
                 self.scene_time = 0.0;
                 true
@@ -249,6 +261,7 @@ impl Demo {
         SPEEDS[self.speed_index]
     }
 
+    /// Total demo time (scaled by speed, frozen while paused).
     pub fn time(&self) -> f32 {
         self.time
     }
@@ -384,6 +397,35 @@ mod tests {
         assert_eq!(d.speed(), 0.25);
         d.update(0.2);
         assert!((d.time() - 0.05).abs() < 1e-6);
+    }
+
+    #[test]
+    fn effects_start_their_clock_when_shown() {
+        struct Clock(std::rc::Rc<std::cell::Cell<f32>>);
+        impl Effect for Clock {
+            fn name(&self) -> &'static str {
+                "clock"
+            }
+            fn palette(&self) -> &'static str {
+                "doom"
+            }
+            fn render(&mut self, _: &mut FrameBuffer, f: Frame, _: &Palette) {
+                self.0.set(f.time);
+            }
+        }
+        let seen = std::rc::Rc::new(std::cell::Cell::new(-1.0));
+        let count = std::rc::Rc::new(std::cell::Cell::new(0));
+        let effects: Vec<Box<dyn Effect>> =
+            vec![Box::new(Solid("a", Rgb::BLACK, count)), Box::new(Clock(seen.clone()))];
+        let mut d = Demo::new(effects, palette::builtin());
+        let mut fb = FrameBuffer::new(2, 2);
+        run(&mut d, 5.0);
+        d.next_effect();
+        d.render(&mut fb);
+        assert_eq!(seen.get(), 0.0, "fresh clock on entry");
+        run(&mut d, 1.0);
+        d.render(&mut fb);
+        assert!((seen.get() - 1.0).abs() < 0.02, "clock runs while shown: {}", seen.get());
     }
 
     #[test]

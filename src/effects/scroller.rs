@@ -83,7 +83,8 @@ impl Scroller {
             let shadow = pass == 0;
             let off = if shadow { scale as i32 } else { 0 };
             for x in 0..w {
-                let tx = (x + scroll) % loop_px;
+                // The message enters from the right edge at t = 0.
+                let tx = (x + scroll + loop_px - w % loop_px) % loop_px;
                 let bits = glyph(chars[tx / cell]);
                 let col = (tx % cell) / scale;
                 let y_top = base + amp * fsin(x as f32 * freq - t * 2.4);
