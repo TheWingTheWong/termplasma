@@ -7,7 +7,7 @@
 
 use termplasma::color::Rgb;
 use termplasma::framebuffer::FrameBuffer;
-use termplasma::render::{Cell, ColorMode, Overlay, Renderer};
+use termplasma::render::{Cell, ColorMode, FULL_BLOCK, HALF_BLOCK, LOWER_HALF_BLOCK, Overlay, Renderer};
 use termplasma::rng::Rng;
 
 /// Just enough of a VT100/xterm to understand what the renderer emits.
@@ -32,7 +32,16 @@ impl Vt {
         while let Some(c) = chars.next() {
             if c != '\x1b' {
                 assert!(self.x < self.cols && self.y < self.rows, "write outside the screen");
-                self.grid[self.y * self.cols + self.x] = Some(Cell { ch: c, fg: self.fg, bg: self.bg });
+                // Normalise the block-drawing variants the encoder may pick
+                // back to the canonical cell they display.
+                let cell = match c {
+                    HALF_BLOCK => Cell::pixels(self.fg, self.bg),
+                    LOWER_HALF_BLOCK => Cell::pixels(self.bg, self.fg),
+                    FULL_BLOCK => Cell::pixels(self.fg, self.fg),
+                    ' ' => Cell::pixels(self.bg, self.bg),
+                    _ => Cell { ch: c, fg: self.fg, bg: self.bg },
+                };
+                self.grid[self.y * self.cols + self.x] = Some(cell);
                 self.x += 1;
                 continue;
             }

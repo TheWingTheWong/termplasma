@@ -18,6 +18,11 @@ use crate::framebuffer::FrameBuffer;
 
 /// The upper half block: foreground = top pixel, background = bottom pixel.
 pub const HALF_BLOCK: char = '\u{2580}';
+/// The lower half block: the same picture as [`HALF_BLOCK`] with the two
+/// colors swapped between foreground and background.
+pub const LOWER_HALF_BLOCK: char = '\u{2584}';
+/// A full block shows only the foreground color.
+pub const FULL_BLOCK: char = '\u{2588}';
 
 /// How colors are sent to the terminal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -258,26 +263,27 @@ impl Renderer {
                     }
                 }
 
-                let need_fg = cell.uses_fg() && cur_fg != Some(cell.fg);
-                let need_bg = cur_bg != Some(cell.bg);
+                let (ch, fg, bg) = pick_glyph(&cell, cur_fg, cur_bg);
+                let need_fg = ch != ' ' && cur_fg != Some(fg);
+                let need_bg = ch != FULL_BLOCK && cur_bg != Some(bg);
                 if need_fg || need_bg {
                     self.out.extend_from_slice(b"\x1b[");
                     if need_fg {
-                        push_color(&mut self.out, self.color_mode, 38, cell.fg);
-                        cur_fg = Some(cell.fg);
+                        push_color(&mut self.out, self.color_mode, 38, fg);
+                        cur_fg = Some(fg);
                     }
                     if need_bg {
                         if need_fg {
                             self.out.push(b';');
                         }
-                        push_color(&mut self.out, self.color_mode, 48, cell.bg);
-                        cur_bg = Some(cell.bg);
+                        push_color(&mut self.out, self.color_mode, 48, bg);
+                        cur_bg = Some(bg);
                     }
                     self.out.push(b'm');
                 }
 
                 let mut utf8 = [0u8; 4];
-                self.out.extend_from_slice(cell.ch.encode_utf8(&mut utf8).as_bytes());
+                self.out.extend_from_slice(ch.encode_utf8(&mut utf8).as_bytes());
                 self.front[i] = cell;
                 changed += 1;
 
@@ -295,6 +301,26 @@ impl Renderer {
         }
         self.front_valid = true;
         FrameStats { cells_changed: changed, bytes: self.out.len() }
+    }
+}
+
+/// Chooses how to draw a cell given the colors the terminal already has
+/// selected, to avoid SGR sequences, which cost 10 to 19 bytes each.
+///
+/// A two-color cell can be drawn as `▀` (fg = top) or as `▄` (fg = bottom);
+/// a one-color cell can be a space (bg) or a full block (fg). Whichever
+/// variant reuses more of the current colors wins; ties keep the canonical
+/// form. Returns `(glyph, fg, bg)`.
+#[inline]
+fn pick_glyph(cell: &Cell, cur_fg: Option<Rgb>, cur_bg: Option<Rgb>) -> (char, Rgb, Rgb) {
+    match cell.ch {
+        HALF_BLOCK => {
+            let keep = (cur_fg != Some(cell.fg)) as u8 + (cur_bg != Some(cell.bg)) as u8;
+            let flip = (cur_fg != Some(cell.bg)) as u8 + (cur_bg != Some(cell.fg)) as u8;
+            if flip < keep { (LOWER_HALF_BLOCK, cell.bg, cell.fg) } else { (HALF_BLOCK, cell.fg, cell.bg) }
+        }
+        ' ' if cur_bg != Some(cell.bg) && cur_fg == Some(cell.bg) => (FULL_BLOCK, cell.bg, cell.bg),
+        _ => (cell.ch, cell.fg, cell.bg),
     }
 }
 
@@ -413,6 +439,36 @@ mod tests {
         assert!(out.starts_with("\x1b[1;2H"), "{out:?}");
         assert!(out.contains("\x1b[3C"), "jump from col 2 to col 5: {out:?}");
         assert_eq!(out.matches("38;2").count(), 1, "colors reused: {out:?}");
+    }
+
+    #[test]
+    fn swaps_half_blocks_to_reuse_colors() {
+        let (a, b) = (Rgb::new(1, 1, 1), Rgb::new(2, 2, 2));
+        let cell = Cell::pixels(a, b);
+        // Terminal already has fg = b, bg = a: draw the lower half instead.
+        assert_eq!(pick_glyph(&cell, Some(b), Some(a)), (LOWER_HALF_BLOCK, b, a));
+        assert_eq!(pick_glyph(&cell, Some(a), Some(b)), (HALF_BLOCK, a, b));
+        assert_eq!(pick_glyph(&cell, None, None), (HALF_BLOCK, a, b));
+        // One-color cell with the right foreground already selected.
+        let flat = Cell::pixels(a, a);
+        assert_eq!(pick_glyph(&flat, Some(a), Some(b)), (FULL_BLOCK, a, a));
+        assert_eq!(pick_glyph(&flat, Some(a), Some(a)).0, ' ');
+    }
+
+    #[test]
+    fn gradient_rows_need_fewer_color_codes() {
+        // Vertical stripes alternating which color is on top: every other
+        // cell is the previous one flipped, so no SGR is needed for it.
+        let mut r = Renderer::new(8, 1);
+        r.set_synchronized(false);
+        let mut fb = FrameBuffer::new(8, 2);
+        for x in 0..8 {
+            let (t, b) = if x % 2 == 0 { (Rgb::WHITE, Rgb::BLACK) } else { (Rgb::BLACK, Rgb::WHITE) };
+            fb.set(x, 0, t);
+            fb.set(x, 1, b);
+        }
+        r.render(&fb, &[]);
+        assert_eq!(text(&r).matches('m').count(), 1, "one SGR for the whole row");
     }
 
     #[test]
