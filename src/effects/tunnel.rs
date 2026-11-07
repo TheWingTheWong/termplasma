@@ -34,9 +34,11 @@ impl Default for Tunnel {
         let mut texture = vec![0u8; TEX * TEX];
         for v in 0..TEX {
             for u in 0..TEX {
-                // XOR pattern, folded so it has bright seams rather than a
-                // hard 255 -> 0 drop every 256 texels.
-                let x = (u ^ v) as u8;
+                // XOR pattern without its three lowest bits (they only add
+                // texel-sized grain that aliases at terminal resolution),
+                // folded so it has bright seams rather than a hard
+                // 255 -> 0 drop every 256 texels.
+                let x = ((u ^ v) & 0xf8) as u8;
                 texture[v * TEX + u] = if x < 128 { x << 1 } else { (255 - x) << 1 };
             }
         }
@@ -89,8 +91,8 @@ impl Effect for Tunnel {
         let t = frame.time;
         let forward = (t * 90.0) as i32 as u8;
         let spin = (t * 22.0 + 40.0 * fsin(t * 0.3)) as i32 as u8;
-        let ox = ((w - 1) as f32 * (0.5 + 0.42 * fsin(t * 0.47))) as usize;
-        let oy = ((h - 1) as f32 * (0.5 + 0.42 * fsin(t * 0.61 + 0.8))) as usize;
+        let ox = ((w - 1) as f32 * (0.5 + 0.3 * fsin(t * 0.47))) as usize;
+        let oy = ((h - 1) as f32 * (0.5 + 0.3 * fsin(t * 0.61 + 0.8))) as usize;
         let tw = w * 2;
 
         for y in 0..h {

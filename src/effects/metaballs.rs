@@ -79,7 +79,7 @@ impl Effect for Metaballs {
                 let index = if field < 1.0 {
                     // Glow: quadratic falloff keeps the background dark.
                     (field * field * 150.0) as u8
-                } else if field < 1.08 {
+                } else if field < 1.2 {
                     // Rim.
                     250
                 } else {

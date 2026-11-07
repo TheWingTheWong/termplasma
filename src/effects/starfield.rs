@@ -48,7 +48,7 @@ impl Starfield {
 
     fn rebuild(&mut self, w: usize, h: usize) {
         self.size = (w, h);
-        let count = (w * h / 14).clamp(48, 3000);
+        let count = (w * h / 24).clamp(32, 2000);
         self.stars = (0..count)
             .map(|_| {
                 let z = NEAR + self.rng.unit() * (1.0 - NEAR);
@@ -78,7 +78,7 @@ impl Effect for Starfield {
         }
 
         let t = frame.time;
-        let speed = 0.35 + 0.3 * (1.0 + fsin(t * 0.45 - 1.2));
+        let speed = 0.5 + 0.45 * (1.0 + fsin(t * 0.45 - 1.2));
         let (sin_r, cos_r) = (fsin(t * 0.12), fcos(t * 0.12));
         let (cx, cy) = (w as f32 * 0.5, h as f32 * 0.5);
         let focal = w.max(h) as f32 * 0.5;
@@ -102,8 +102,16 @@ impl Effect for Starfield {
             let bright = (depth * (2.0 - depth) * 255.0) as u8;
             let head = palette.get(bright.max(70));
             match s.prev {
-                Some((px, py)) => line(fb, (px, py), (sx, sy), palette.get(bright / 3), head),
+                Some((px, py)) => {
+                    line(fb, (px, py), (sx, sy), palette.get((bright as u16 * 2 / 3) as u8), head)
+                }
                 None => fb.set(sx as i32, sy as i32, head),
+            }
+            if s.z < 0.3 {
+                // Close stars get a 2x2 head so they read as nearer.
+                for (ox, oy) in [(1, 0), (0, 1), (1, 1)] {
+                    fb.set(sx as i32 + ox, sy as i32 + oy, head);
+                }
             }
             s.prev = Some((sx, sy));
             self.stars[i] = s;

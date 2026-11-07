@@ -7,12 +7,14 @@
 //! flicker and lean. The heat value is used directly as a palette index,
 //! which is why the PSX fire ramp is the natural palette for it.
 //!
-//! Like Doom, heat has only 37 levels (0..=36), and that coarseness is what
-//! produces coherent tongues instead of noise. Doom's decay was a coin flip
-//! of 0 or 1 per row on a fixed 200-line screen; here the mean decay is
-//! scaled to the frame height so the flames climb the same proportion of the
-//! screen at any terminal size. The simulation runs on a fixed 60 Hz clock,
-//! independent of the render frame rate.
+//! Like Doom, heat has only 37 levels (0..=36) and the decay is Doom's coin
+//! flip of 0 or 1 per row, drawn from the same random number as the drift.
+//! That coarseness is what produces coherent tongues instead of noise, but it
+//! also fixes how far a flame climbs: about 72 rows. So the automaton always
+//! runs on a grid [`SIM_H`] rows tall (with the width chosen to keep the
+//! screen's aspect ratio) and is resampled to the frame. The flames look the
+//! same in a 20-row terminal and a 120-row one. The simulation steps on a
+//! fixed 60 Hz clock, independent of the render frame rate.
 
 use super::{Effect, Frame};
 use crate::framebuffer::FrameBuffer;
@@ -23,65 +25,76 @@ use crate::rng::Rng;
 const STEP_HZ: f32 = 60.0;
 /// Hottest heat level, as in Doom.
 const MAX_HEAT: u8 = 36;
-/// Fraction of the screen height a flame climbs on average.
-const REACH: f32 = 0.62;
+/// Simulation height: flames reach ~72 rows, so they fill about 60% of it.
+const SIM_H: usize = 116;
+/// Upper bound on the simulation width for very wide, short frames.
+const MAX_SIM_W: usize = 1024;
 
 pub struct Fire {
-    w: usize,
-    h: usize,
+    size: (usize, usize),
+    sim_w: usize,
     heat: Vec<u8>,
+    /// Simulation column for each screen column.
+    x_map: Vec<usize>,
     rng: Rng,
-    /// Mean decay per row in 8.8 fixed point; random decay is drawn from
-    /// `0..=2*mean` so the average matches.
-    decay_q8: u32,
     accum: f32,
     steps: u64,
 }
 
 impl Default for Fire {
     fn default() -> Self {
-        Fire { w: 0, h: 0, heat: Vec::new(), rng: Rng::new(0xF1AE), decay_q8: 0, accum: 0.0, steps: 0 }
+        Fire {
+            size: (0, 0),
+            sim_w: 0,
+            heat: Vec::new(),
+            x_map: Vec::new(),
+            rng: Rng::new(0xF1AE),
+            accum: 0.0,
+            steps: 0,
+        }
     }
 }
 
 impl Fire {
     fn rebuild(&mut self, w: usize, h: usize) {
-        self.w = w;
-        self.h = h;
-        self.heat = vec![0; w * h];
-        self.decay_q8 = ((MAX_HEAT as f32 * 256.0) / (REACH * h as f32)).max(1.0) as u32;
-        // Pre-warm so the fire is already burning when it first appears.
-        for _ in 0..h + 8 {
-            self.step();
+        self.size = (w, h);
+        let sim_w = ((w * SIM_H + h / 2) / h).clamp(1, MAX_SIM_W);
+        self.x_map = (0..w).map(|x| x * sim_w / w).collect();
+        // Keep the old flames when only the height changed.
+        if sim_w != self.sim_w {
+            self.sim_w = sim_w;
+            self.heat = vec![0; sim_w * SIM_H];
+            // Pre-warm so the fire is already burning when it first appears.
+            for _ in 0..SIM_H + 16 {
+                self.step();
+            }
         }
     }
 
     fn step(&mut self) {
-        let (w, h) = (self.w, self.h);
+        let w = self.sim_w;
         // Doom held the source row at a constant maximum. Modulating it with
-        // two slow travelling sine waves (plus rare cold sparks) gives the
-        // flame body large, drifting tongues instead of an even curtain.
-        let base = (h - 1) * w;
+        // two slow travelling sine waves (plus rare cold sparks) shapes the
+        // body into large, drifting tongues instead of an even curtain.
+        let base = (SIM_H - 1) * w;
         let t = self.steps as f32 / STEP_HZ;
-        let k = 64.0 / w.max(1) as f32;
+        let k = 1.0 / SIM_H as f32;
         for x in 0..w {
             let xf = x as f32 * k;
-            let wave = fsin(xf * 0.9 + t * 1.7) + fsin(xf * 0.37 - t * 1.1);
-            let cool = ((1.0 - wave) * 0.25 * 11.0) as u8;
-            let spark = if self.rng.below(24) == 0 { 6 } else { 0 };
-            self.heat[base + x] = MAX_HEAT - cool.min(14) - spark;
+            let wave = fsin(xf * 9.0 + t * 1.3) + fsin(xf * 3.7 - t * 0.9);
+            let cool = ((1.2 - wave) * 7.0).clamp(0.0, 22.0) as u8;
+            let spark = if self.rng.below(20) == 0 { 8 } else { 0 };
+            self.heat[base + x] = MAX_HEAT - cool - spark;
         }
-        let span = 2 * self.decay_q8 + 1;
-        for y in 1..h {
+        for y in 1..SIM_H {
             for x in 0..w {
                 let src = self.heat[y * w + x];
                 let r = self.rng.next_u32();
-                // Doom's drift: -2..=+1 columns, biased so the flames lean
-                // into a gentle wind. Columns wrap like Doom's linear buffer.
-                let dx = 1 - (r & 3) as isize;
-                let dst_x = (x as isize + dx).rem_euclid(w as isize) as usize;
-                let decay = ((((r >> 8) % span) + 128) >> 8) as u8;
-                self.heat[(y - 1) * w + dst_x] = src.saturating_sub(decay);
+                // Doom's spreadFire: drift of -2..=+1 columns (so the flames
+                // lean into a gentle wind) and a decay of r & 1. Columns
+                // wrap, as they did in Doom's linear buffer.
+                let dst_x = (x + 2 * w + 1 - (r & 3) as usize) % w;
+                self.heat[(y - 1) * w + dst_x] = src.saturating_sub((r & 1) as u8);
             }
         }
         self.steps += 1;
@@ -102,7 +115,7 @@ impl Effect for Fire {
         if w == 0 || h == 0 {
             return;
         }
-        if (w, h) != (self.w, self.h) {
+        if (w, h) != self.size {
             self.rebuild(w, h);
         }
         // Fixed-step simulation; cap catch-up so a stall cannot spiral.
@@ -121,8 +134,11 @@ impl Effect for Fire {
         for (level, slot) in lut.iter_mut().enumerate() {
             *slot = (level * 255 / MAX_HEAT as usize) as u8;
         }
-        for (px, &heat) in fb.pixels_mut().iter_mut().zip(&self.heat) {
-            *px = palette.get(lut[heat as usize]);
+        for y in 0..h {
+            let sim_row = &self.heat[(y * SIM_H / h) * self.sim_w..][..self.sim_w];
+            for (px, &sx) in fb.row_mut(y).iter_mut().zip(&self.x_map) {
+                *px = palette.get(lut[sim_row[sx] as usize]);
+            }
         }
     }
 }
@@ -135,10 +151,12 @@ mod tests {
     fn source_is_hot_and_top_is_cold() {
         let mut f = Fire::default();
         f.rebuild(64, 80);
-        let bottom: u32 = f.heat[79 * 64..].iter().map(|&v| v as u32).sum();
-        let top: u32 = f.heat[..64].iter().map(|&v| v as u32).sum();
-        assert!(bottom > 64 * 30, "source row stays hot");
-        assert!(top < 64 * 3, "flames die out before the top: {top}");
+        let w = f.sim_w;
+        assert_eq!(w, 93, "simulation keeps the frame's aspect ratio");
+        let bottom: u32 = f.heat[(SIM_H - 1) * w..].iter().map(|&v| v as u32).sum();
+        let top: u32 = f.heat[..w * 8].iter().map(|&v| v as u32).sum();
+        assert!(bottom > w as u32 * 20, "source row stays hot");
+        assert!(top < w as u32, "flames die out before the top: {top}");
     }
 
     #[test]
@@ -147,6 +165,8 @@ mod tests {
         let mut a = Fire::default();
         let mut b = Fire::default();
         let mut fb = FrameBuffer::new(16, 16);
+        a.render(&mut fb, Frame::default(), &pal);
+        b.render(&mut fb, Frame::default(), &pal);
         // Power-of-two frame times keep the float accumulator exact.
         for _ in 0..64 {
             a.render(&mut fb, Frame { time: 0.0, dt: 1.0 / 64.0 }, &pal);
