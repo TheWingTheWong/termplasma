@@ -15,5 +15,7 @@ pub mod effects;
 pub mod ascii;
 pub mod font;
 pub mod demo;
+pub mod app;
 pub mod cli;
+pub mod headless;
 pub mod hud;
