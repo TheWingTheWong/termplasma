@@ -1,5 +1,7 @@
 # termplasma
 
+[![ci](https://github.com/TheWingTheWong/termplasma/actions/workflows/ci.yml/badge.svg)](https://github.com/TheWingTheWong/termplasma/actions/workflows/ci.yml)
+
 Seven classic demoscene effects, rendered live in a terminal: plasma, Doom fire,
 a starfield, a texture-mapped tunnel, metaballs, a rotozoomer and a sine scroller.
 It is written in Rust with one dependency (crossterm, for raw mode and input) and
