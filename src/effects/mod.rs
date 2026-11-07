@@ -10,6 +10,8 @@ use crate::palette::Palette;
 
 pub mod fire;
 pub mod plasma;
+pub mod starfield;
+pub mod tunnel;
 
 /// Timing for one frame.
 #[derive(Clone, Copy, Debug, Default)]
@@ -33,5 +35,10 @@ pub trait Effect {
 
 /// One instance of every effect, in demo order.
 pub fn all() -> Vec<Box<dyn Effect>> {
-    vec![Box::new(plasma::Plasma::default()), Box::new(fire::Fire::default())]
+    vec![
+        Box::new(starfield::Starfield::default()),
+        Box::new(plasma::Plasma::default()),
+        Box::new(tunnel::Tunnel::default()),
+        Box::new(fire::Fire::default()),
+    ]
 }
