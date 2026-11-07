@@ -168,7 +168,8 @@ pub fn detect_color_mode(
     if colorterm.contains("truecolor") || colorterm.contains("24bit") {
         return ColorMode::TrueColor;
     }
-    // Apple Terminal before macOS 26 and the Linux console mangle 24-bit SGR.
+    // Apple Terminal has long lacked 24-bit color and the Linux console mangles
+    // it; both get the 256-color cube unless COLORTERM says otherwise.
     if term_program == Some("Apple_Terminal") || term == Some("linux") {
         return ColorMode::Ansi256;
     }
