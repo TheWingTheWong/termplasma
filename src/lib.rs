@@ -8,3 +8,5 @@
 pub mod color;
 pub mod palette;
 pub mod lut;
+pub mod framebuffer;
+pub mod rng;
