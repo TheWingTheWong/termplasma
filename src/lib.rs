@@ -11,3 +11,5 @@ pub mod lut;
 pub mod framebuffer;
 pub mod rng;
 pub mod render;
+pub mod effects;
+pub mod ascii;
