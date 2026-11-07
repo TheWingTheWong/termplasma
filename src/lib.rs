@@ -14,3 +14,4 @@ pub mod render;
 pub mod effects;
 pub mod ascii;
 pub mod font;
+pub mod demo;
