@@ -130,7 +130,8 @@ fn run_replay(cols: usize, rows: usize, mode: ColorMode, seed: u32) {
     for frame in 0..60 {
         scribble(&mut fb, &mut rng);
         let hud = format!("frame {frame}");
-        let overlays = [Overlay { col: frame % cols, row: frame % rows, text: &hud, fg: Rgb::WHITE, bg: None }];
+        let overlays =
+            [Overlay { col: frame % cols, row: frame % rows, text: &hud, fg: Rgb::WHITE, bg: None }];
         let used = if frame % 3 == 0 { &overlays[..] } else { &[] };
         r.render(&fb, used);
         vt.feed(r.output());

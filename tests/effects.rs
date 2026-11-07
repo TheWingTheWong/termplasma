@@ -83,12 +83,7 @@ fn every_effect_draws_a_real_picture() {
             effect.render(&mut fb, frame, &pals[p]);
         }
         let distinct: HashSet<Rgb> = fb.pixels().iter().copied().collect();
-        assert!(
-            distinct.len() >= 4,
-            "{} drew only {} distinct colors",
-            effect.name(),
-            distinct.len()
-        );
+        assert!(distinct.len() >= 4, "{} drew only {} distinct colors", effect.name(), distinct.len());
         assert!(
             !fb.pixels().contains(&Rgb::new(1, 2, 3)),
             "{} left stale pixels from the previous frame",

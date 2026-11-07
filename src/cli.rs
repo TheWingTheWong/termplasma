@@ -155,7 +155,11 @@ fn size(v: &str) -> Result<(usize, usize), String> {
 
 /// Picks a color mode from the environment: truecolor unless the terminal
 /// is known not to support it.
-pub fn detect_color_mode(colorterm: Option<&str>, term_program: Option<&str>, term: Option<&str>) -> ColorMode {
+pub fn detect_color_mode(
+    colorterm: Option<&str>,
+    term_program: Option<&str>,
+    term: Option<&str>,
+) -> ColorMode {
     let colorterm = colorterm.unwrap_or("").to_ascii_lowercase();
     if colorterm.contains("truecolor") || colorterm.contains("24bit") {
         return ColorMode::TrueColor;
@@ -199,10 +203,7 @@ mod tests {
     #[test]
     fn color_modes() {
         assert_eq!(parse(["--colors", "256"]).unwrap().colors, ColorChoice::Fixed(ColorMode::Ansi256));
-        assert_eq!(
-            parse(["--colors=TrueColor"]).unwrap().colors,
-            ColorChoice::Fixed(ColorMode::TrueColor)
-        );
+        assert_eq!(parse(["--colors=TrueColor"]).unwrap().colors, ColorChoice::Fixed(ColorMode::TrueColor));
         assert!(parse(["--colors", "16"]).is_err());
     }
 

@@ -36,11 +36,7 @@ impl Rgb {
             (a + (((b as i32 - a) * alpha) >> 8)) as u8
         }
         let alpha = alpha.min(256) as i32;
-        Rgb::new(
-            ch(self.r, other.r, alpha),
-            ch(self.g, other.g, alpha),
-            ch(self.b, other.b, alpha),
-        )
+        Rgb::new(ch(self.r, other.r, alpha), ch(self.g, other.g, alpha), ch(self.b, other.b, alpha))
     }
 
     /// Multiplies every channel by `s / 256` (`s` in `0..=256`).
@@ -56,7 +52,7 @@ impl Rgb {
 
     /// Per-channel saturating addition, used for additive glows.
     #[inline]
-    pub fn add(self, other: Rgb) -> Rgb {
+    pub fn saturating_add(self, other: Rgb) -> Rgb {
         Rgb::new(
             self.r.saturating_add(other.r),
             self.g.saturating_add(other.g),
@@ -73,10 +69,7 @@ impl Rgb {
     /// Largest absolute difference across the three channels.
     #[inline]
     pub fn max_delta(self, other: Rgb) -> u8 {
-        self.r
-            .abs_diff(other.r)
-            .max(self.g.abs_diff(other.g))
-            .max(self.b.abs_diff(other.b))
+        self.r.abs_diff(other.r).max(self.g.abs_diff(other.g)).max(self.b.abs_diff(other.b))
     }
 
     /// Average of two colors, rounding down.
@@ -180,7 +173,7 @@ mod tests {
     fn scale_and_add() {
         assert_eq!(Rgb::WHITE.scale(256), Rgb::WHITE);
         assert_eq!(Rgb::WHITE.scale(0), Rgb::BLACK);
-        assert_eq!(Rgb::new(200, 10, 0).add(Rgb::new(100, 10, 0)), Rgb::new(255, 20, 0));
+        assert_eq!(Rgb::new(200, 10, 0).saturating_add(Rgb::new(100, 10, 0)), Rgb::new(255, 20, 0));
     }
 
     #[test]

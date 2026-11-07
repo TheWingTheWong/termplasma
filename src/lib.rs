@@ -5,17 +5,17 @@
 //! effects that draw into that frame buffer. The binary wires the core to a
 //! real terminal through crossterm, or runs it headless for benchmarks.
 
-pub mod color;
-pub mod palette;
-pub mod lut;
-pub mod framebuffer;
-pub mod rng;
-pub mod render;
-pub mod effects;
-pub mod ascii;
-pub mod font;
-pub mod demo;
 pub mod app;
+pub mod ascii;
 pub mod cli;
+pub mod color;
+pub mod demo;
+pub mod effects;
+pub mod font;
+pub mod framebuffer;
 pub mod headless;
 pub mod hud;
+pub mod lut;
+pub mod palette;
+pub mod render;
+pub mod rng;

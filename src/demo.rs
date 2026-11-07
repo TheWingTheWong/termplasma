@@ -46,8 +46,7 @@ impl Demo {
     pub fn new(effects: Vec<Box<dyn Effect>>, palettes: Vec<Palette>) -> Demo {
         assert!(!effects.is_empty(), "a demo needs at least one effect");
         assert!(!palettes.is_empty(), "a demo needs at least one palette");
-        let preferred =
-            effects.iter().map(|e| palette::find(&palettes, e.palette()).unwrap_or(0)).collect();
+        let preferred = effects.iter().map(|e| palette::find(&palettes, e.palette()).unwrap_or(0)).collect();
         Demo {
             effects,
             palettes,

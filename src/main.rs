@@ -67,13 +67,8 @@ fn run(opts: Options) -> Result<(), String> {
     if !io::stdout().is_terminal() {
         return Err("stdout is not a terminal; use --headless to render without one".into());
     }
-    let settings = Settings {
-        fps: opts.fps,
-        hud: opts.hud,
-        color_mode,
-        tolerance: opts.tolerance,
-        sync: opts.sync,
-    };
+    let settings =
+        Settings { fps: opts.fps, hud: opts.hud, color_mode, tolerance: opts.tolerance, sync: opts.sync };
     app::run(&mut demo, settings).map_err(|e| format!("terminal error: {e}"))
 }
 
@@ -132,7 +127,10 @@ fn bench(opts: &Options) {
     let frames = opts.frames;
     println!("{frames} frames per effect at {cols}x{rows} cells ({cols}x{} px), truecolor", rows * 2);
     println!();
-    println!("{:<10} {:>10} {:>10} {:>9} {:>11} {:>9}", "effect", "effect ms", "encode ms", "fps", "bytes/frame", "re-sent");
+    println!(
+        "{:<10} {:>10} {:>10} {:>9} {:>11} {:>9}",
+        "effect", "effect ms", "encode ms", "fps", "bytes/frame", "re-sent"
+    );
     let names: Vec<&str> = effects::all().iter().map(|e| e.name()).collect();
     for name in names {
         let mut demo = Demo::standard();

@@ -26,10 +26,7 @@ impl Palette {
     /// If `stops` is empty or its indices are not strictly increasing.
     pub fn gradient(name: &'static str, stops: &[(u8, Rgb)]) -> Palette {
         assert!(!stops.is_empty(), "a gradient needs at least one stop");
-        assert!(
-            stops.windows(2).all(|w| w[0].0 < w[1].0),
-            "gradient stops must be strictly increasing"
-        );
+        assert!(stops.windows(2).all(|w| w[0].0 < w[1].0), "gradient stops must be strictly increasing");
         let mut colors = [stops[0].1; 256];
         for (i, slot) in colors.iter_mut().enumerate() {
             let i = i as u32;
@@ -53,11 +50,8 @@ impl Palette {
     pub fn ramp(name: &'static str, colors: &[Rgb]) -> Palette {
         assert!(colors.len() >= 2, "a ramp needs at least two colors");
         let last = colors.len() - 1;
-        let stops: Vec<(u8, Rgb)> = colors
-            .iter()
-            .enumerate()
-            .map(|(i, &c)| (((i * 255 + last / 2) / last) as u8, c))
-            .collect();
+        let stops: Vec<(u8, Rgb)> =
+            colors.iter().enumerate().map(|(i, &c)| (((i * 255 + last / 2) / last) as u8, c)).collect();
         Palette::gradient(name, &stops)
     }
 
@@ -101,19 +95,16 @@ impl Palette {
 /// The 37-entry fire ramp from the PlayStation port of Doom, as documented in
 /// Fabien Sanglard's write-up of the effect.
 const DOOM_FIRE: [u32; 37] = [
-    0x070707, 0x1f0707, 0x2f0f07, 0x470f07, 0x571707, 0x671f07, 0x771f07, 0x8f2707, 0x9f2f07,
-    0xaf3f07, 0xbf4707, 0xc74707, 0xdf4f07, 0xdf5707, 0xdf5707, 0xd75f07, 0xd75f07, 0xd7670f,
-    0xcf6f0f, 0xcf770f, 0xcf7f0f, 0xcf8717, 0xc78717, 0xc78f17, 0xc7971f, 0xbf9f1f, 0xbf9f1f,
-    0xbfa727, 0xbfa727, 0xbfaf2f, 0xb7af2f, 0xb7b72f, 0xb7b737, 0xcfcf6f, 0xdfdf9f, 0xefefc7,
-    0xffffff,
+    0x070707, 0x1f0707, 0x2f0f07, 0x470f07, 0x571707, 0x671f07, 0x771f07, 0x8f2707, 0x9f2f07, 0xaf3f07,
+    0xbf4707, 0xc74707, 0xdf4f07, 0xdf5707, 0xdf5707, 0xd75f07, 0xd75f07, 0xd7670f, 0xcf6f0f, 0xcf770f,
+    0xcf7f0f, 0xcf8717, 0xc78717, 0xc78f17, 0xc7971f, 0xbf9f1f, 0xbf9f1f, 0xbfa727, 0xbfa727, 0xbfaf2f,
+    0xb7af2f, 0xb7b72f, 0xb7b737, 0xcfcf6f, 0xdfdf9f, 0xefefc7, 0xffffff,
 ];
 
 /// Commodore 64 VIC-II colors (Pepto's measured values), the eight that form
 /// a clean luminance ladder: black, blue, purple, light blue, cyan, light
 /// green, yellow, white.
-const C64_LADDER: [u32; 8] = [
-    0x000000, 0x352879, 0x6f3d86, 0x6c5eb5, 0x70a4b2, 0x9ad284, 0xb8c76f, 0xffffff,
-];
+const C64_LADDER: [u32; 8] = [0x000000, 0x352879, 0x6f3d86, 0x6c5eb5, 0x70a4b2, 0x9ad284, 0xb8c76f, 0xffffff];
 
 fn hexes(v: &[u32]) -> Vec<Rgb> {
     v.iter().map(|&h| Rgb::hex(h)).collect()
@@ -197,11 +188,7 @@ mod tests {
 
     #[test]
     fn gradient_reproduces_stops_exactly() {
-        let stops = [
-            (0, Rgb::hex(0x000000)),
-            (100, Rgb::hex(0x804020)),
-            (255, Rgb::hex(0xffffff)),
-        ];
+        let stops = [(0, Rgb::hex(0x000000)), (100, Rgb::hex(0x804020)), (255, Rgb::hex(0xffffff))];
         let p = Palette::gradient("t", &stops);
         for (i, c) in stops {
             assert_eq!(p.get(i), c, "stop at {i}");
