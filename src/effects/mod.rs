@@ -9,7 +9,9 @@ use crate::framebuffer::FrameBuffer;
 use crate::palette::Palette;
 
 pub mod fire;
+pub mod metaballs;
 pub mod plasma;
+pub mod rotozoom;
 pub mod starfield;
 pub mod tunnel;
 
@@ -39,6 +41,8 @@ pub fn all() -> Vec<Box<dyn Effect>> {
         Box::new(starfield::Starfield::default()),
         Box::new(plasma::Plasma::default()),
         Box::new(tunnel::Tunnel::default()),
+        Box::new(rotozoom::Rotozoom::default()),
+        Box::new(metaballs::Metaballs::default()),
         Box::new(fire::Fire::default()),
     ]
 }
